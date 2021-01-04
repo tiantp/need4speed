@@ -1,3 +1,5 @@
+# Model for use with the MNIST dataset
+#
 # Adapted from
 #    https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html
 

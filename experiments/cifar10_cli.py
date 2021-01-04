@@ -1,10 +1,3 @@
-# MNIST pytorch code adapted from
-#  https://towardsdatascience.com/from-pytorch-to-pytorch-lightning-a-gentle-introduction-b371b7caaf09
-#  https://github.com/pytorch/examples/blob/master/mnist/main.py
-#
-# PyTorch Lightning code for mnist adapted from
-#  https://github.com/PyTorchLightning/pytorch-lightning/blob/master/pl_examples/basic_examples/mnist_datamodule.py
-
 # A hack to import models from parent directory
 import sys
 sys.path.insert(0, '..')
@@ -13,11 +6,11 @@ import torch
 import numpy as np
 from argparse import ArgumentParser
 from torch.nn import functional as F
-from models.LeNet import LeNet
-from datamodules.mnist import MnistDataModule
+from models.SimpleCNN import SimpleCNN
+from datamodules.cifar import Cifar10DataModule
 from pytorch_lightning import LightningModule, Trainer, seed_everything, metrics
 
-class MnistExperiment(LightningModule):
+class Cifar10Experiment(LightningModule):
 
     @staticmethod
     def add_argparse_args(parent_parser):
@@ -26,14 +19,13 @@ class MnistExperiment(LightningModule):
                 help='learning rate (default: 1e-3)')
         return parser
 
-
     def __init__(
         self,
         lr : float = 1e-3,
         **kwargs,
     ):
         super().__init__()
-        self.net = LeNet()
+        self.net = SimpleCNN()
         self.lr  = lr
         self.train_acc = metrics.Accuracy()
         self.val_acc = metrics.Accuracy()
@@ -81,23 +73,14 @@ class MnistExperiment(LightningModule):
         return optimizer
 
 
-def trainer_add_arguments(parent_parser):
-    parser = ArgumentParser(parents=[parent_parser], add_help=False)
-    parser.add_argument('--epochs', type=int, default=14, metavar='N',
-            help='number of epochs to train (default: 14)')
-    parser.add_argument('--dry-run', action='store_true', default=False,
-            help='quickly check a single pass')
-    return parser
-
-
 def cli():
     seed_everything(42) # ensure reproducibility
 
     # Training settings
-    DataModule = MnistDataModule
-    Experiment = MnistExperiment
+    DataModule = Cifar10DataModule
+    Experiment = Cifar10Experiment
 
-    parser = ArgumentParser(description='PyTorch MNIST Example')
+    parser = ArgumentParser(description='Cifar10 Example')
     parser = DataModule.add_argparse_args(parser)
     parser = Trainer.add_argparse_args(parser)
     args   = parser.parse_args()
@@ -111,7 +94,6 @@ def cli():
 
     print("That's all folks")
 
-
-
 if __name__ == "__main__":
     cli()
+

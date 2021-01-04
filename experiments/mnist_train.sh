@@ -34,7 +34,7 @@ train_to_98 () {
 #     SERVER_PORT=6006
 
 # help
-dry_run
-# train_to_98
+# dry_run
+train_to_98
 
 
