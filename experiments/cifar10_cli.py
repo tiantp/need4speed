@@ -5,10 +5,12 @@ sys.path.insert(0, '..')
 import torch
 import numpy as np
 from argparse import ArgumentParser
-from torch.nn import functional as F
-from models.SimpleCNN import SimpleCNN
 from datamodules.cifar import Cifar10DataModule
+from models.DawnNet import DawnNet
+from models.SimpleCNN import SimpleCNN
 from pytorch_lightning import LightningModule, Trainer, seed_everything, metrics
+from pytorch_lightning.loggers import TensorBoardLogger
+from torch.nn import functional as F
 
 class Cifar10Experiment(LightningModule):
 
@@ -17,15 +19,19 @@ class Cifar10Experiment(LightningModule):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument('--lr', type=float, default=1e-3, metavar='LR',
                 help='learning rate (default: 1e-3)')
+        parser.add_argument('--network', type=str, default='SimpleCNN',
+                metavar='NETWORK', help='Network type, choose [SimpleCNN,DawnNet]')
         return parser
 
     def __init__(
         self,
         lr : float = 1e-3,
+        network : str = 'SimpleCNN',
         **kwargs,
     ):
         super().__init__()
-        self.net = SimpleCNN()
+        self.netname = network # faciliate tensorboard graph logging
+        self.net = {'simplecnn':SimpleCNN(), 'dawnnet':DawnNet()}[network.lower()]
         self.lr  = lr
         self.train_acc = metrics.Accuracy()
         self.val_acc = metrics.Accuracy()
@@ -51,6 +57,12 @@ class Cifar10Experiment(LightningModule):
 
     def training_epoch_end(self, train_step_outpus):
         self.log('train_acc_epoch', self.train_acc.compute())
+
+        # Save graph to tensorboard
+        if (self.current_epoch==0):
+            self.logger.experiment.add_graph(
+                    Cifar10Experiment(network=self.netname),
+                    torch.rand((1,3,32,32)))
 
     def validation_step(self, batch, batch_idx):
         out = self._get_step_output(batch, batch_idx)
@@ -81,13 +93,17 @@ def cli():
     Experiment = Cifar10Experiment
 
     parser = ArgumentParser(description='Cifar10 Example')
-    parser = DataModule.add_argparse_args(parser)
+    parser = Cifar10DataModule.add_argparse_args(parser)
+    parser = Cifar10Experiment.add_argparse_args(parser)
     parser = Trainer.add_argparse_args(parser)
     args   = parser.parse_args()
 
-    exp = Experiment(**vars(args))
-    dm  = DataModule(**vars(args))
+    exp     = Experiment(**vars(args))
+    dm      = DataModule(**vars(args))
+
     trainer = Trainer.from_argparse_args(args, deterministic=True)
+
+    # print('Model Used\n', exp.net)
 
     trainer.fit(exp, dm)
     trainer.test()

@@ -13,13 +13,13 @@ class Cifar10DataModule(LightningDataModule):
     def add_argparse_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument('--data_dir', type=str, default="/tmp",
-                metavar='N', help='data directory (default: "/tmp")')
-        parser.add_argument('--train_batch_size', type=int, default=64,
-                metavar='N', help='batch size for training (default: 64)')
+                metavar='DATA_DIR', help='data directory (default: "/tmp")')
+        parser.add_argument('--train_batch_size', type=int, default=128,
+                metavar='TRAIN_BATCH_SIZE', help='batch size for training (default: 128)')
         parser.add_argument('--val_batch_size', type=int, default=1000,
-                metavar='N', help='batch size for validation (default: 1000)')
+                metavar='VAL_BATCH_SIZE', help='batch size for validation (default: 1000)')
         parser.add_argument('--test_batch_size', type=int, default=1000,
-                metavar='N', help='batch size for testing (default: 1000)')
+                metavar='TEST_BATCH_SIZE', help='batch size for testing (default: 1000)')
         return parser
 
 
