@@ -62,15 +62,15 @@ class Cifar10DataModule(LightningDataModule):
 
     def train_dataloader(self):
         return DataLoader(self.data_train, batch_size = self.train_batch_size,
-                num_workers = 12, pin_memory = True, shuffle = True)
+                num_workers = 4, pin_memory = True, shuffle = True)
 
     def val_dataloader(self):
         return DataLoader(self.data_val, batch_size = self.test_batch_size,
-                num_workers = 12, pin_memory = True, shuffle = False)
+                num_workers = 4, pin_memory = True, shuffle = False)
 
     def test_dataloader(self, transforms=None):
         return DataLoader(self.data_test, batch_size = self.val_batch_size,
-                num_workers = 12, pin_memory = True, shuffle = False)
+                num_workers = 4, pin_memory = True, shuffle = False)
 
 
 def test():

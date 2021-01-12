@@ -18,12 +18,15 @@ dry_run() {
         --default_root_dir $HOME/logs/dry_run \
         --data_dir $HOME/data \
         --gpus 1 \
+        --lr 1e-3 \
+        --lr_scheduler onecycle \
         --train_batch_size 128 \
         --fast_dev_run 1
+
 }
 
 # Baseline to start optimization
-train_SimpleCNN() {
+train_Acc633_SimpleCNN() {
     NETWORK=SimpleCNN
     python cifar10_cli.py \
         --network ${NETWORK} \
@@ -33,11 +36,11 @@ train_SimpleCNN() {
         --max_epochs 1 \
         --lr 1e-3 \
         --train_batch_size 128 \
-        --max_epochs 30
+        --max_epochs 35
 }
 
-# DawnNet
-train_DawnNetBaseline1() {
+# Baseline to start optimization
+train_Acc832_DawnNet_Adam_ConstLR() {
     NETWORK=DawnNet
     python cifar10_cli.py \
         --network ${NETWORK}\
@@ -45,15 +48,27 @@ train_DawnNetBaseline1() {
         --data_dir $HOME/data \
         --gpus 1 \
         --lr 1e-3 \
+        --lr_scheduler constant \
         --train_batch_size 128 \
-        --max_epochs 30
-
-#        --max_epochs 30
+        --max_epochs 35
 }
+
+# Cyclic Learning rate
+train_Acc787_DawnNet_Adam_OneCycle() {
+    NETWORK=DawnNet
+    python cifar10_cli.py \
+        --network ${NETWORK} \
+        --default_root_dir $HOME/logs/DawnNetOnecycle\
+        --data_dir $HOME/data \
+        --gpus 1 \
+        --lr_scheduler onecycle \
+        --train_batch_size 128 \
+        --max_epochs 35
+}
+
 
 # help
 # dry_run
-# train_SimpleCNN
-train_DawnNetBaseline
-
-
+# train_Acc633_SimpleCNN
+# train_Acc832_DawnNet_Adam_ConstLR
+# train_Acc787_DawnNet_Adam_OneCycle
