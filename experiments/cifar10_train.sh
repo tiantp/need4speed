@@ -1,9 +1,14 @@
 # A series of improvement to the training for CIFAR 10 to train faster and
 # better
 #
-# FunctionCall    Acc    Time   Model     Comments
-# SimpleCNN       0.628  1m 53s SimpleCNN Conv2d, MaxPool, Relu
-# DawnNetBaseline 0.831  8m 21s DawnNet   ResNet like skip layers
+#
+# Name           SimpleCNN  Baseline  OneCycle SGD
+# Optimize        Adam       Adam      Adam     SGD
+# Use OneCycle    No         No        Yes      No
+# FlipLR+Crop     No         No        No       No
+# FP Precision    32         32        32       32
+# Test Acc        63         83.3      78.7     67.7
+# Time
 
 # See all options
 help() {
@@ -25,8 +30,9 @@ dry_run() {
 
 }
 
-# Baseline to start optimization
-train_Acc633_SimpleCNN() {
+# Small Network for Debugging purpose
+# Around 63% test accuracy
+train_SimpleCNN() {
     NETWORK=SimpleCNN
     python cifar10_cli.py \
         --network ${NETWORK} \
@@ -40,7 +46,7 @@ train_Acc633_SimpleCNN() {
 }
 
 # Baseline to start optimization
-train_Acc832_DawnNet_Adam_ConstLR() {
+train_DawnNet_Baseline() {
     NETWORK=DawnNet
     python cifar10_cli.py \
         --network ${NETWORK}\
@@ -54,11 +60,11 @@ train_Acc832_DawnNet_Adam_ConstLR() {
 }
 
 # Cyclic Learning rate
-train_Acc787_DawnNet_Adam_OneCycle() {
+train_DawnNet_OneCycle() {
     NETWORK=DawnNet
     python cifar10_cli.py \
         --network ${NETWORK} \
-        --default_root_dir $HOME/logs/DawnNetOnecycle\
+        --default_root_dir $HOME/logs/${NETWORK}Onecycle\
         --data_dir $HOME/data \
         --gpus 1 \
         --lr_scheduler onecycle \
@@ -66,9 +72,26 @@ train_Acc787_DawnNet_Adam_OneCycle() {
         --max_epochs 35
 }
 
+train_DawnNet_SGD() {
+    NETWORK=DawnNet
+    python cifar10_cli.py \
+        --network ${NETWORK} \
+        --default_root_dir $HOME/logs/${NETWORK}SGD\
+        --data_dir $HOME/data \
+        --gpus 1 \
+        --lr_scheduler constant \
+        --optimizer_name sgd \
+        --train_batch_size 128 \
+        --max_epochs 35
+}
+
+
 
 # help
 # dry_run
-# train_Acc633_SimpleCNN
-# train_Acc832_DawnNet_Adam_ConstLR
-# train_Acc787_DawnNet_Adam_OneCycle
+# train_SimpleCNN
+# train_DawnNet_Baseline
+# train_DawnNet_OneCycle
+train_DawnNet_SGD
+
+

@@ -12,7 +12,7 @@ from pytorch_lightning import LightningModule, Trainer, seed_everything, metrics
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.nn import functional as F
-from torch.optim import Adam
+from torch.optim import Adam, SGD
 from torch.optim.lr_scheduler import OneCycleLR
 
 class Cifar10Experiment(LightningModule):
@@ -28,6 +28,8 @@ class Cifar10Experiment(LightningModule):
         parser.add_argument('--lr_scheduler', type=str, default='constant',
                 metavar='LR_SCHEDULER',
                 help='[constant (default), onecycle] Constant learning rate or one cycle learning rate')
+        parser.add_argument('--optimizer_name', type=str, default='adam',
+                metavar='OPTIMIZER', help='[adam (default), sgd] optimizer')
         return parser
 
     def __init__(
@@ -35,10 +37,10 @@ class Cifar10Experiment(LightningModule):
         lr : float = 1e-3,
         network : str = 'SimpleCNN',
         lr_scheduler : str = 'constant', # `constant` or `onecycle`
-        # used for onecycle params
-        oc_max_lr : float = 0.1,
+        oc_max_lr : float = 0.1,# used for onecycle params
         oc_epochs : int = None,
         oc_steps_per_epoch : int = None,
+        optimizer_name : str = 'adam',
         **kwargs,
     ):
         super().__init__()
@@ -49,6 +51,7 @@ class Cifar10Experiment(LightningModule):
         self.oc_max_lr = oc_max_lr
         self.oc_epochs = oc_epochs
         self.oc_steps_per_epoch = oc_steps_per_epoch
+        self.optimizer_name = optimizer_name
         self.train_acc = metrics.Accuracy()
         self.val_acc   = metrics.Accuracy()
         self.test_acc  = metrics.Accuracy()
@@ -98,12 +101,23 @@ class Cifar10Experiment(LightningModule):
         self.log('test_accuracy_epoch_end', self.test_acc.compute())
 
     def configure_optimizers(self):
+        opt_cstor = {'adam':Adam, 'sgd':SGD }[self.optimizer_name.lower()]
+
+        print('------->')
+        print('------->')
+        print('------->')
+        print('------->')
+        print('------->')
+
         if self.lr_scheduler.lower() == 'constant':
-            optimizer = Adam(self.parameters(), lr=self.lr)
+            optimizer = opt_cstor(self.parameters(), lr=self.lr)
+
+            print('------> optimizer', optimizer)
+
             return optimizer
 
         elif self.lr_scheduler.lower() == 'onecycle':
-            optimizers = [Adam(self.parameters(), lr=self.lr)]
+            optimizers = [opt_cstor(self.parameters(), lr=self.lr)]
             epochs     = self.oc_epochs
             max_lr     = self.oc_max_lr
             steps_per_epoch = self.oc_steps_per_epoch
@@ -111,8 +125,11 @@ class Cifar10Experiment(LightningModule):
             div_factor = max_lr / initial_lr # inital_lr = max_lr / div_factor
             scheduler = OneCycleLR(optimizers[0], max_lr=max_lr,
                     epochs=self.oc_epochs, steps_per_epoch=steps_per_epoch,
-                    verbose=False, anneal_strategy='linear', pct_start=0.5)
+                    verbose=True, anneal_strategy='linear', pct_start=0.5)
             schedulers = [{'scheduler':scheduler, 'interval':'epoch'}]
+
+            print('------> optimizer', optimizers[0])
+
             return optimizers, schedulers
 
         else :
@@ -138,8 +155,10 @@ def cli():
     args   = parser.parse_args()
 
     dm     = DataModule(**vars(args))
+    dm.prepare_data()     # These two steps are needed to get num batches
+    dm.setup(stage='fit') # in order to init the OneCycleLR params below
     exp    = Experiment(oc_max_lr=0.1, oc_epochs=args.max_epochs,
-                oc_steps_per_epoch=357, **vars(args))
+                oc_steps_per_epoch=len(dm.train_dataloader()), **vars(args))
 
     trainer = Trainer.from_argparse_args(args, deterministic=True,
             callbacks=[PrintingCallback()])
