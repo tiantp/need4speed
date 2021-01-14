@@ -61,7 +61,7 @@ class Cifar10DataModule(LightningDataModule):
         # Assign train/val dataset for use in dataloaders
         if stage == 'fit' or stage is None:
             if self.augment_data :
-                tlist.append(transforms.RandomCrop(31, padding=4))
+                tlist.append(transforms.RandomCrop(32, padding=4))
                 tlist.append(transforms.RandomHorizontalFlip())
             data_full = CIFAR10(self.data_dir, train=True,
                     transform=transforms.Compose(tlist))

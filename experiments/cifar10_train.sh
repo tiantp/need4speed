@@ -1,14 +1,13 @@
 # A series of improvement to the training for CIFAR 10 to train faster and
-# better
-#
+# achieve better accuracy
 #
 # Name           NAIVE BASE  CYC   SGD   AUG   ACS   ACS16
 # Optimize       Adam  Adam  SGD   SGD   Adam  SGD   SGD
 # Use OneCycle   No    No    Yes   No    No    Yes   YES
 # FlipLR+Crop    No    No    No    No    Yes   Yes   YES
 # FP Precision   32    32    32    32    32    32    16
-# Test Acc       63    83.3  78.7  67.7  89.6  91.5  93.1
-# TotalTime (s)                                656   376
+# Test Acc       63    83.3  78.7  67.7  89.6  91.5  93.5
+# TotalTime (s)                                656   373
 
 # See all options
 help() {
@@ -144,17 +143,22 @@ train_DawnNet_ACS16() {
 debug() {
     NETWORK=DawnNet
     python cifar10_cli.py \
-        --network ${NETWORK} \
-        --profiler simple \
-        --default_root_dir $HOME/logs/debug\
-        --data_dir $HOME/data \
-        --gpus 1 \
-        --lr_scheduler onecycle \
-        --optimizer_name sgd \
-        --train_batch_size 128 \
         --augment_data \
+        --data_dir $HOME/data \
+        --default_root_dir $HOME/logs/debug\
+        --gpus 1 \
+        --lr 0.01 \
+        --lr_scheduler onecycle \
+        --max_epochs 2 \
+        --network ${NETWORK} \
+        --oc_pct 0.3 \
+        --optimizer_name sgd \
         --precision 16 \
-        --max_epochs 1
+        --profiler simple\
+        --train_batch_size 128
+
+#        --progress_bar 0 \
+
 }
 
 
@@ -171,5 +175,3 @@ debug() {
 # train_DawnNet_ACS
 train_DawnNet_ACS16
 # debug
-
-

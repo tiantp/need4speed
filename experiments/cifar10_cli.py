@@ -32,6 +32,8 @@ class Cifar10Experiment(LightningModule):
         parser.add_argument('--oc_max_lr', type=float, default=0.1,
                 metavar='OC_MAX_LR',
                 help='max lr for use in OneCycleLR (default 0.1)')
+        parser.add_argument('--oc_pct', type=float, default=0.5,
+                metavar='OC_PCT', help='position of turning point in onecycle')
         parser.add_argument('--optimizer_name', type=str, default='adam',
                 metavar='OPTIMIZER', help='[adam (default), sgd] optimizer')
         return parser
@@ -42,6 +44,7 @@ class Cifar10Experiment(LightningModule):
         network : str = 'SimpleCNN',
         lr_scheduler : str = 'constant', # `constant` or `onecycle`
         oc_max_lr : float = 0.1,# used for onecycle params
+        oc_pct : float = 0.5, # change from increase to decrease at 50% point
         oc_epochs : int = None,
         oc_steps_per_epoch : int = None,
         optimizer_name : str = 'adam',
@@ -53,6 +56,7 @@ class Cifar10Experiment(LightningModule):
         self.lr  = lr
         self.lr_scheduler = lr_scheduler
         self.oc_max_lr = oc_max_lr
+        self.oc_pct = oc_pct
         self.oc_epochs = oc_epochs
         self.oc_steps_per_epoch = oc_steps_per_epoch
         self.optimizer_name = optimizer_name
@@ -120,7 +124,7 @@ class Cifar10Experiment(LightningModule):
             scheduler = OneCycleLR(optimizers[0], max_lr=max_lr,
                     epochs=self.oc_epochs, steps_per_epoch=steps_per_epoch,
                     verbose=False, anneal_strategy='linear',
-                    pct_start=0.5)
+                    pct_start=self.oc_pct)
             schedulers = [{'scheduler':scheduler, 'interval':'step'}]
             return optimizers, schedulers
 
@@ -166,7 +170,7 @@ def dryrun_onecyclelr():
 
 
 def cli():
-    seed_everything(42) # ensure reproducibility
+    seed_everything(42)   # 93.1  # ensure reproducibility
 
     # Training settings
     DataModule = Cifar10DataModule

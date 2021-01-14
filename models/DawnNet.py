@@ -52,7 +52,7 @@ class Final(nn.Module):
         z  = torch.cat([y1, y2], 1) # concatenate
         z  = self.flatten(z)
         z  = self.linear(z)
-        z  = F.log_softmax(z)
+        z  = F.log_softmax(z, dim=1)
         return z
 
 
