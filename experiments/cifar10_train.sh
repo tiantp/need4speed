@@ -7,8 +7,8 @@
 # Use OneCycle   No    No    Yes   No    No    Yes   YES
 # FlipLR+Crop    No    No    No    No    Yes   Yes   YES
 # FP Precision   32    32    32    32    32    32    16
-# Test Acc       63    83.3  78.7  67.7  89.6  91.5  92.8
-# TotalTime (s)                                656   370
+# Test Acc       63    83.3  78.7  67.7  89.6  91.5  93.1
+# TotalTime (s)                                656   376
 
 # See all options
 help() {

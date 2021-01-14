@@ -45,13 +45,6 @@ class Cifar10DataModule(LightningDataModule):
         self.val_batch_size = val_batch_size
         self.augment_data = augment_data
         self.use_val = use_val
-        tlist= [transforms.ToTensor(),
-            transforms.Normalize(mean=(0.4914, 0.4822, 0.4465),
-                std=(0.2470, 0.2435, 0.2616))]
-        if self.augment_data :
-            tlist.append(transforms.RandomCrop(32, padding=4))
-            tlist.append(transforms.RandomHorizontalFlip())
-        self.transform = transforms.Compose(tlist)
 
 
 
@@ -61,32 +54,39 @@ class Cifar10DataModule(LightningDataModule):
         CIFAR10(self.data_dir, train=False, download=True)
 
     def setup(self, stage=None):
+        tlist= [transforms.ToTensor(),
+            transforms.Normalize(mean=(0.4914, 0.4822, 0.4465),
+                std=(0.2470, 0.2435, 0.2616))]
+
         # Assign train/val dataset for use in dataloaders
         if stage == 'fit' or stage is None:
+            if self.augment_data :
+                tlist.append(transforms.RandomCrop(31, padding=4))
+                tlist.append(transforms.RandomHorizontalFlip())
             data_full = CIFAR10(self.data_dir, train=True,
-                    transform=self.transform)
+                    transform=transforms.Compose(tlist))
             self.data_train, self.data_val = random_split(data_full,
                 [train_sz, val_sz]) if self.use_val else (data_full, None)
 
         if stage == 'test' or stage is None:
             self.data_test = CIFAR10(self.data_dir, train=False,
-                    transform=self.transform)
+                    transform=transforms.Compose(tlist))
 
 
     def train_dataloader(self):
         return DataLoader(self.data_train, batch_size = self.train_batch_size,
-                num_workers = 2, pin_memory = True, shuffle = True)
+                num_workers = 4, pin_memory = True, shuffle = True)
 
     def val_dataloader(self):
         if self.data_val :
             return DataLoader(self.data_val, batch_size = self.test_batch_size,
-                num_workers = 2, pin_memory = True, shuffle = False)
+                num_workers = 4, pin_memory = True, shuffle = False)
         else :
             return None
 
     def test_dataloader(self, transforms=None):
         return DataLoader(self.data_test, batch_size = self.val_batch_size,
-                num_workers = 2, pin_memory = True, shuffle = False)
+                num_workers = 4, pin_memory = True, shuffle = False)
 
 
 def test():
