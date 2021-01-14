@@ -20,6 +20,11 @@ class Cifar10DataModule(LightningDataModule):
                 metavar='VAL_BATCH_SIZE', help='batch size for validation (default: 1000)')
         parser.add_argument('--test_batch_size', type=int, default=1000,
                 metavar='TEST_BATCH_SIZE', help='batch size for testing (default: 1000)')
+        parser.add_argument('--augment_data', action='store_true', default=False,
+                help='Apply data augmentation FlipLR and Random crop')
+        parser.add_argument('--use_val', action='store_true', default=False,
+                help='Partition the dataset into train and validation. This'
+                'will reduce the amount of data for training. (default: False)')
         return parser
 
 
@@ -29,6 +34,8 @@ class Cifar10DataModule(LightningDataModule):
         train_batch_size: int = 128,
         test_batch_size: int = 256,
         val_batch_size: int = 256,
+        augment_data: bool = False,
+        use_val: bool = False,
         **kwargs,
     ):
         super().__init__()
@@ -36,11 +43,16 @@ class Cifar10DataModule(LightningDataModule):
         self.train_batch_size = train_batch_size
         self.test_batch_size = test_batch_size
         self.val_batch_size = val_batch_size
-        self.transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize( mean=(0.4914, 0.4822, 0.4465),
-                std=(0.2470, 0.2435, 0.2616))
-        ])
+        self.augment_data = augment_data
+        self.use_val = use_val
+        tlist= [transforms.ToTensor(),
+            transforms.Normalize(mean=(0.4914, 0.4822, 0.4465),
+                std=(0.2470, 0.2435, 0.2616))]
+        if self.augment_data :
+            tlist.append(transforms.RandomCrop(32, padding=4))
+            tlist.append(transforms.RandomHorizontalFlip())
+        self.transform = transforms.Compose(tlist)
+
 
 
     def prepare_data(self):
@@ -53,8 +65,9 @@ class Cifar10DataModule(LightningDataModule):
         if stage == 'fit' or stage is None:
             data_full = CIFAR10(self.data_dir, train=True,
                     transform=self.transform)
-            self.data_train, self.data_val = random_split(
-                    data_full, [45000, 5000])
+            self.data_train, self.data_val = random_split(data_full,
+                [train_sz, val_sz]) if self.use_val else (data_full, None)
+
         if stage == 'test' or stage is None:
             self.data_test = CIFAR10(self.data_dir, train=False,
                     transform=self.transform)
@@ -62,15 +75,18 @@ class Cifar10DataModule(LightningDataModule):
 
     def train_dataloader(self):
         return DataLoader(self.data_train, batch_size = self.train_batch_size,
-                num_workers = 4, pin_memory = True, shuffle = True)
+                num_workers = 2, pin_memory = True, shuffle = True)
 
     def val_dataloader(self):
-        return DataLoader(self.data_val, batch_size = self.test_batch_size,
-                num_workers = 4, pin_memory = True, shuffle = False)
+        if self.data_val :
+            return DataLoader(self.data_val, batch_size = self.test_batch_size,
+                num_workers = 2, pin_memory = True, shuffle = False)
+        else :
+            return None
 
     def test_dataloader(self, transforms=None):
         return DataLoader(self.data_test, batch_size = self.val_batch_size,
-                num_workers = 4, pin_memory = True, shuffle = False)
+                num_workers = 2, pin_memory = True, shuffle = False)
 
 
 def test():

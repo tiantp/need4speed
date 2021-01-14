@@ -27,7 +27,11 @@ class Cifar10Experiment(LightningModule):
                 help='Network type, choose [SimpleCNN (default), DawnNet]')
         parser.add_argument('--lr_scheduler', type=str, default='constant',
                 metavar='LR_SCHEDULER',
-                help='[constant (default), onecycle] Constant learning rate or one cycle learning rate')
+                help='[constant (default), onecycle] Constant learning rate or'
+                ' one cycle learning rate')
+        parser.add_argument('--oc_max_lr', type=float, default=0.1,
+                metavar='OC_MAX_LR',
+                help='max lr for use in OneCycleLR (default 0.1)')
         parser.add_argument('--optimizer_name', type=str, default='adam',
                 metavar='OPTIMIZER', help='[adam (default), sgd] optimizer')
         return parser
@@ -102,18 +106,8 @@ class Cifar10Experiment(LightningModule):
 
     def configure_optimizers(self):
         opt_cstor = {'adam':Adam, 'sgd':SGD }[self.optimizer_name.lower()]
-
-        print('------->')
-        print('------->')
-        print('------->')
-        print('------->')
-        print('------->')
-
         if self.lr_scheduler.lower() == 'constant':
             optimizer = opt_cstor(self.parameters(), lr=self.lr)
-
-            print('------> optimizer', optimizer)
-
             return optimizer
 
         elif self.lr_scheduler.lower() == 'onecycle':
@@ -121,15 +115,13 @@ class Cifar10Experiment(LightningModule):
             epochs     = self.oc_epochs
             max_lr     = self.oc_max_lr
             steps_per_epoch = self.oc_steps_per_epoch
-            initial_lr = 0.006
+            initial_lr = 0.06
             div_factor = max_lr / initial_lr # inital_lr = max_lr / div_factor
             scheduler = OneCycleLR(optimizers[0], max_lr=max_lr,
                     epochs=self.oc_epochs, steps_per_epoch=steps_per_epoch,
-                    verbose=True, anneal_strategy='linear', pct_start=0.5)
-            schedulers = [{'scheduler':scheduler, 'interval':'epoch'}]
-
-            print('------> optimizer', optimizers[0])
-
+                    verbose=False, anneal_strategy='linear',
+                    pct_start=0.5)
+            schedulers = [{'scheduler':scheduler, 'interval':'step'}]
             return optimizers, schedulers
 
         else :
@@ -138,7 +130,39 @@ class Cifar10Experiment(LightningModule):
 
 class PrintingCallback(Callback):
     def on_train_epoch_start(self, trainer, pl_module):
-        print('\n') # keep tqdm progress bar loss value from last epoch
+        lr = trainer.optimizers[0].param_groups[0]['lr']
+        print('Learning Rate : {}'.format(lr))
+
+
+
+def dryrun_onecyclelr():
+    import matplotlib.pyplot as plt
+    model = torch.nn.Linear(1,1)
+    max_lr = 0.1
+    momentum = 0.9
+    batches_per_epoch = 352
+    epochs = 30
+    initial_lr = 0.006
+    div_factor = max_lr / initial_lr
+    optimizer = SGD(model.parameters(), lr=max_lr, momentum=momentum)
+    scheduler = OneCycleLR(optimizer, max_lr, epochs=epochs,
+            steps_per_epoch=batches_per_epoch, pct_start=0.5,
+            anneal_strategy='linear', cycle_momentum=True,
+            base_momentum=0.85, max_momentum=momentum, div_factor=div_factor,
+            final_div_factor=1e4)
+    print('div_factor', div_factor)
+    print('max_lr', max_lr)
+    print('max_lr / div_factor', max_lr / div_factor)
+    ys = []
+    for i, _ in enumerate(range(epochs)):
+        for j, _ in enumerate(range(batches_per_epoch)):
+            lr = optimizer.param_groups[0]['lr']
+            ys.append(lr)
+            scheduler.step()
+            if i==0: print(j, lr)
+    plt.plot(ys)
+    plt.show()
+
 
 
 def cli():
@@ -157,7 +181,7 @@ def cli():
     dm     = DataModule(**vars(args))
     dm.prepare_data()     # These two steps are needed to get num batches
     dm.setup(stage='fit') # in order to init the OneCycleLR params below
-    exp    = Experiment(oc_max_lr=0.1, oc_epochs=args.max_epochs,
+    exp    = Experiment(oc_epochs=args.max_epochs,
                 oc_steps_per_epoch=len(dm.train_dataloader()), **vars(args))
 
     trainer = Trainer.from_argparse_args(args, deterministic=True,
@@ -170,4 +194,5 @@ def cli():
 
 if __name__ == "__main__":
     cli()
+    # dryrun_onecyclelr()
 

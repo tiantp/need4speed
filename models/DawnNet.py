@@ -1,10 +1,7 @@
 # A modified ResNet used for speeding up CIFAR10 training.
 # Reference :
-#   David's Page codebase to speed up CIFAR10 training
 #      https://github.com/davidcpage/cifar10-fast
-#   Writeup :
 #      https://myrtle.ai/learn/how-to-train-your-resnet-1-baseline/
-#   Lambda Lab writeup :
 #      https://lambdalabs.com/blog/resnet9-train-to-94-cifar10-accuracy-in-100-seconds/
 
 import torch
@@ -22,7 +19,7 @@ class Block(nn.Module):
         than inplane channel, a side convolution of 1x1 is applied to ensure
         the channels are matching before adding in the skip layer '''
         super(Block, self).__init__()
-        self.add_sideconv = (inplanes != outplanes)
+        self.add_sideconv = (inplanes != outplanes) or (stride != 1)
         self.bn1    = nn.BatchNorm2d(inplanes)
         self.relu1  = nn.ReLU()
         self.c3x3_A = nn.Conv2d(inplanes, outplanes, kernel_size=3, stride=stride,
@@ -47,13 +44,14 @@ class Final(nn.Module):
         self.avgpool = nn.AvgPool2d(4) # [N, inplanes, H/4, W/4]
         self.maxpool = nn.MaxPool2d(4) # [N, inplanes, H/4, W/4]
         self.flatten = nn.Flatten()
-        self.linear  = nn.Linear(2 * inplanes * 2 * 2, out_features, bias=True)
+        self.linear  = nn.Linear(2 * inplanes, out_features, bias=True)
 
     def forward(self, x: Tensor) -> Tensor:
         y1 = self.maxpool(x)
         y2 = self.avgpool(x)
         z  = torch.cat([y1, y2], 1) # concatenate
-        z  = self.linear(self.flatten(z))
+        z  = self.flatten(z)
+        z  = self.linear(z)
         z  = F.log_softmax(z)
         return z
 
@@ -72,6 +70,9 @@ class DawnNet(nn.Module):
         self.layer3 = nn.Sequential(*[
                         Block(inplanes=128, outplanes=256, stride=2),
                         Block(inplanes=256, outplanes=256, stride=1)])
+        self.layer4 = nn.Sequential(*[
+                        Block(inplanes=256, outplanes=256, stride=2),
+                        Block(inplanes=256, outplanes=256, stride=1)])
         self.final  = Final(inplanes=256, out_features=10)
 
 
@@ -80,6 +81,7 @@ class DawnNet(nn.Module):
         y = self.layer1(y) # output [N,  64, 32, 32]
         y = self.layer2(y) # output [N, 128, 16, 16]
         y = self.layer3(y) # output [N, 256,  8,  8]
+        y = self.layer4(y) # output [N, 256,  4,  4]
         y = self.final(y)  # output [N, 10]
         return y
 
