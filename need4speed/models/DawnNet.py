@@ -85,3 +85,33 @@ class DawnNet(nn.Module):
         y = self.final(y)  # output [N, 10]
         return y
 
+def profile_model_autograd():
+    import torch
+    model = DawnNet()
+    x = torch.randn((1,3,32,32), requires_grad=True)
+    with torch.autograd.profiler.profile(use_cuda=True) as prof:
+        model(x)
+    print(prof)
+
+def profile_model_torchprof():
+    """https://github.com/awwong1/torchprof"""
+    import torch
+    import torchprof
+    model = DawnNet().cuda()
+
+    # Half precision
+    model.half()
+    for layer in model.modules():
+        layer.float()
+
+    x = torch.rand((1,3,32,32)).cuda()
+    with torchprof.Profile(model, use_cuda=True, profile_memory=True) as prof:
+        model(x)
+
+    print(prof.display(show_events=False))
+
+
+if __name__ == "__main__":
+    # profile_model_autograd()
+    profile_model_torchprof()
+

@@ -5,9 +5,9 @@ sys.path.insert(0, '..')
 import torch
 import numpy as np
 from argparse import ArgumentParser
-from datamodules.cifar import Cifar10DataModule
-from models.DawnNet import DawnNet
-from models.SimpleCNN import SimpleCNN
+from need4speed.datamodules.cifar import Cifar10DataModule
+from need4speed.models.DawnNet import DawnNet
+from need4speed.models.SimpleCNN import SimpleCNN
 from pytorch_lightning import LightningModule, Trainer, seed_everything, metrics
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -135,7 +135,7 @@ class Cifar10Experiment(LightningModule):
 class PrintingCallback(Callback):
     def on_train_epoch_start(self, trainer, pl_module):
         lr = trainer.optimizers[0].param_groups[0]['lr']
-        print('Learning Rate : {}'.format(lr))
+        print('Learning Rate {:0.5f}'.format(lr))
 
 
 

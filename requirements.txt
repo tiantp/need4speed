@@ -1,0 +1,8 @@
+matplotlib==3.3.3
+numpy==1.19.4
+pytorch-lightning-bolts==0.2.5
+pytorch-lightning==1.1.2
+torch==1.7.1
+torchprof==1.3.2
+torchsummary==1.5.1
+torchvision==0.8.2
