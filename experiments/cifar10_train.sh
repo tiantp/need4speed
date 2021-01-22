@@ -178,21 +178,41 @@ train_DawnNet_BSLR() {
         --train_batch_size 512
 }
 
+# Replace Batchnorm with Fixup init
+train_Fixup() {
+    NETWORK=Fixup
+    python cifar10_cli.py \
+        --augment_data \
+        --data_dir $HOME/data \
+        --default_root_dir $HOME/logs/${NETWORK}\
+        --gpus 1 \
+        --lr_scheduler onecycle \
+        --max_epochs 30 \
+        --network ${NETWORK} \
+        --optimizer_name sgd \
+        --oc_max_lr 0.15 \
+        --precision 16 \
+        --profiler simple \
+        --train_batch_size 512
+}
+
 
 debug() {
     NETWORK=DawnNet
+    # NETWORK=Fixup
     python cifar10_cli.py \
         --augment_data \
         --data_dir $HOME/data \
         --default_root_dir $HOME/logs/debug\
         --gpus 1 \
         --lr_scheduler onecycle \
-        --max_epochs 3 \
+        --max_epochs 2 \
         --network ${NETWORK} \
         --optimizer_name sgd \
+        --oc_max_lr 0.05 \
         --precision 16 \
         --profiler simple \
-        --train_batch_size 128
+        --train_batch_size 512
 }
 
 
@@ -209,8 +229,9 @@ debug() {
 # train_DawnNet_ACS
 # train_DawnNet_ACS16
 # train_DawnNet_BS512
-train_DawnNet_BSLR
-# debug
+# train_DawnNet_BSLR
+# train_Fixup
+debug
 
 
 

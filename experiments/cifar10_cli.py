@@ -6,10 +6,10 @@ import torch
 import numpy as np
 from argparse import ArgumentParser
 from need4speed.datamodules.cifar import Cifar10DataModule
-from need4speed.models.DawnNet import DawnNet
+from need4speed.models.DawnNet import DawnNet, DawnBlock, DawnFinal, FixupBlock, FixupFinal
 from need4speed.models.SimpleCNN import SimpleCNN
 from pytorch_lightning import LightningModule, Trainer, seed_everything, metrics
-from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.callbacks import Callback, LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.nn import functional as F
 from torch.optim import Adam, SGD
@@ -52,7 +52,9 @@ class Cifar10Experiment(LightningModule):
     ):
         super().__init__()
         self.netname = network # faciliate tensorboard graph logging
-        self.net = {'simplecnn':SimpleCNN(), 'dawnnet':DawnNet()}[network.lower()]
+        self.net = { 'simplecnn':SimpleCNN(),
+                     'dawnnet':DawnNet(DawnBlock, DawnFinal),
+                     'fixup':DawnNet(FixupBlock, FixupFinal)}[network.lower()]
         self.lr  = lr
         self.lr_scheduler = lr_scheduler
         self.oc_max_lr = oc_max_lr
@@ -65,6 +67,9 @@ class Cifar10Experiment(LightningModule):
         self.test_acc  = metrics.Accuracy()
 
         self.save_hyperparameters()
+
+        self.val_debug = []
+        self.test_debug = []
 
 
     def _get_step_output(self, batch, batch_idx):
@@ -81,9 +86,10 @@ class Cifar10Experiment(LightningModule):
         out = self._get_step_output(batch, batch_idx)
         self.log('train_loss', out['loss'])
         self.log('train_accuracy', self.train_acc(out['log_prob'], out['y']))
+        self.log('lr', self.optimizer.param_groups[0]['lr'], prog_bar=True)
         return out['loss']
 
-    def training_epoch_end(self, train_step_outpus):
+    def training_epoch_end(self, train_step_outputs):
         self.log('train_accuracy_epoch_end', self.train_acc.compute())
 
         # Save graph to tensorboard
@@ -94,25 +100,28 @@ class Cifar10Experiment(LightningModule):
 
     def validation_step(self, batch, batch_idx):
         out = self._get_step_output(batch, batch_idx)
-        self.log('val_loss', out['loss'])
-        self.log('val_accuracy', self.val_acc(out['log_prob'], out['y']))
+        acc = self.val_acc(out['log_prob'], out['y'])
+        self.log('val_loss', out['loss'], prog_bar=True)
 
     def validation_epoch_end(self, validation_step_outputs):
-        self.log('val_accuracy_epoch_end', self.val_acc.compute())
+        acc = self.val_acc.compute()
+        self.log('val_acc', acc, prog_bar=True)
 
     def test_step(self, batch, batch_idx):
         out = self._get_step_output(batch, batch_idx)
+        acc = self.test_acc(out['log_prob'], out['y'])
         self.log('test_loss', out['loss'])
-        self.log('test_accuracy', self.test_acc(out['log_prob'], out['y']))
 
     def test_epoch_end(self, test_step_outputs):
-        self.log('test_accuracy_epoch_end', self.test_acc.compute())
+        acc = self.test_acc.compute()
+        self.log('test_acc', acc)
+
 
     def configure_optimizers(self):
         opt_cstor = {'adam':Adam, 'sgd':SGD }[self.optimizer_name.lower()]
         if self.lr_scheduler.lower() == 'constant':
-            optimizer = opt_cstor(self.parameters(), lr=self.lr)
-            return optimizer
+            self.optimizer = opt_cstor(self.parameters(), lr=self.lr)
+            return self.optimizer
 
         elif self.lr_scheduler.lower() == 'onecycle':
             optimizers = [opt_cstor(self.parameters(), lr=self.lr)]
@@ -126,16 +135,24 @@ class Cifar10Experiment(LightningModule):
                     verbose=False, anneal_strategy='linear',
                     pct_start=self.oc_pct)
             schedulers = [{'scheduler':scheduler, 'interval':'step'}]
+            self.optimizer = optimizers[0]
             return optimizers, schedulers
 
         else :
             raise ValueError('Error Cifar10Experiment::configure_optimizers(): '
                     'unrecognized scheduler `{}`'.format(self.lr_scheduler))
 
+import time
 class PrintingCallback(Callback):
     def on_train_epoch_start(self, trainer, pl_module):
-        lr = trainer.optimizers[0].param_groups[0]['lr']
-        print('Learning Rate {:0.5f}'.format(lr))
+        # lr = trainer.optimizers[0].param_groups[0]['lr']
+        # print('Learning Rate {:0.5f}'.format(lr))
+        print()
+
+        self.epoch_start_time =  time.time()
+
+    def on_train_epoch_end(self, trainer, pl_module, outputs):
+        print('on_train_epoch_end {} (sec)'.format(time.time() - self.epoch_start_time))
 
 
 
@@ -170,7 +187,7 @@ def dryrun_onecyclelr():
 
 
 def cli():
-    seed_everything(42)   # 93.1  # ensure reproducibility
+    seed_everything(42)   # ensure reproducibility
 
     # Training settings
     DataModule = Cifar10DataModule
